@@ -1,0 +1,2 @@
+# NEEDLEWORK-ScenarioWriter-Gluttony
+ネットワーク機器のログからNEEDLEWORKのシナリオを生成するツール
