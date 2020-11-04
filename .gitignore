@@ -1,4 +1,4 @@
 *.log
 *.csv
 *.exe
-sample_traffic.log
+！sample_traffic.log
