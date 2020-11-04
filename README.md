@@ -17,9 +17,11 @@
 現在対応しているネットワーク機器・ログは以下の通りです。
 
 - Palo Alto Networks 次世代ファイアウォール
-    - Trafficログ
+    - Trafficログ ※機器からのエクスポートログ、SYSLOGに対応
 
     ※検証はPAN-OS 8.1で行っています
+
+ログのフォーマットはデフォルトのみに対応しています。<br>
 
 # ツールの利用方法
 
@@ -39,9 +41,10 @@ OS : Windows 10
 
 　以下のファイルが含まれています。<br>
   - swg                 ：ツール本体<br>
-  - config.tml          ：コンフィグファイル<br>
-  - readme.txt          ：Readme<br>
-  - sample_traffic.log  :サンプルログ
+  - readme.txt          ：はじめにお読みください<br>
+  - LICENSE             :ライセンス<br>
+  - sample/config.tml          ：サンプルコンフィグ<br>
+  - sample/sample_traffic.log  :サンプルログ
 
 3．コンフィグファイル（config.tml）を編集します。
 
@@ -67,8 +70,11 @@ vlanid  = "インタフェースに設定しているVLAN IDを記載"
 
 ### サンプルコンフィグ
 
+### 構成 
+
 ![構成](img/NEEDLEWORK-ScenarioWriter.png) 
 
+### コンフィグ
 ```
 
 [device]
@@ -111,10 +117,9 @@ swg -f <ログファイルパス> [オプション]
 
 # オプション
 -c              ：コンフィグファイルパスを指定（デフォルト：config.tml）
--ser <yes / no> ："yes"の場合、ログ項目"Session End Reason"の値が「threat」の場合にシナリオ出力をスキップします。（デフォルト：no）
 
 # コマンド例
-swg -f sample_traffic.log -c config02.tml -ser yes
+swg -f sample_traffic.log -c config02.tml
 ```
 
 3．下記ファイルがツールと同じディレクトリに出力されます。
