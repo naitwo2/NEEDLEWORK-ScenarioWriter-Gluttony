@@ -1,0 +1,15 @@
+
+[device]
+devicename = "Fortigate"
+
+[[device.interface]]
+ifname  = "wan1"
+ip      = "10.0.0.251"
+zone    = ""
+vlanid  = "" 
+
+[[device.interface]]
+ifname  = "LAN1"
+ip      = "172.16.20.251"
+zone    = ""
+vlanid  = "20" 

@@ -1,4 +1,9 @@
+！sample_*
+!sample_*
+!unexpect_pattern_*
 *.log
 *.csv
 *.exe
-！sample_traffic.log
+result_*
+_*
+
