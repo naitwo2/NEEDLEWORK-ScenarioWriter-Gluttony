@@ -12,7 +12,11 @@
 
 # 本ツールについて
 
-ネットワーク機器のログファイルからNEEDLEWORKのシナリオファイルを生成するツールです。
+ネットワーク機器のログファイルからNEEDLEWORKのシナリオファイルを生成するツールです。<br>
+
+※ネットワークテスト自動化プロダクト「NEEDLEWORK（ニードルワーク）」<br>
+[https://www.ap-com.co.jp/ja/needlework/](https://www.ap-com.co.jp/ja/needlework/)
+
 
 現在対応しているネットワーク機器・ログは以下の通りです。
 
@@ -20,6 +24,11 @@
     - Trafficログ ※機器からのエクスポートログ、SYSLOGに対応
 
     ※検証はPAN-OS 8.1で行っています
+
+- Fortinet FortiGate
+    - Trafficログ ※機器からのエクスポートログ、SYSLOGに対応
+
+    ※検証はFortiOS 5.2.3で行っています
 
 ログのフォーマットはデフォルトのみに対応しています。<br>
 
@@ -40,11 +49,11 @@ OS : Windows 10
 2．zipファイルを任意のディレクトリに解凍します。<br>
 
 　以下のファイルが含まれています。<br>
-  - swg                 ：ツール本体<br>
+  - swg.exe                 ：ツール本体<br>
   - readme.txt          ：はじめにお読みください<br>
   - LICENSE             :ライセンス<br>
   - sample/config.tml          ：サンプルコンフィグ<br>
-  - sample/sample_traffic.log  :サンプルログ
+  - sample/sample_**_traffic.log  :サンプルログ
 
 3．コンフィグファイル（config.tml）を編集します。
 
@@ -52,19 +61,22 @@ OS : Windows 10
 
 　以下の内容で設定します。<br>
 　記載した値を参照してログからシナリオを生成しているので正確に記載をお願いします。<br>
+　※devicenameは大文字小文字を区別しません<br>
+　※その他の項目は大文字小文字を区別するため正確に記載をお願いします<br>
 
 ```
 [device]
-devicename = "PaloAltoと記載"
+devicename = "PaloAlto、またはFortiGateと記載"
 
 [[device.interface]]
-ifname  = "インタフェース名を記載"
-ip      = "インタフェースに設定しているIPアドレスを記載"
-zone    = "インタフェースに設定しているZONE名を記載"
-vlanid  = "インタフェースに設定しているVLAN IDを記載" 
+ifname  = "インターフェース名を記載"
+ip      = "インターフェースに設定しているIPアドレスを記載"
+zone    = "インターフェースに設定しているZONE名を記載"
+　　　　　　※FortiGateの場合は不要
+vlanid  = "インターフェースに設定しているVLAN IDを記載" 
 　　　　　　※VLAN Tagが設定されていない場合は空白、「0」を記載
 
-※インタフェースの数だけ"[[device.interface]]"セクションをコピーして記載します。
+※インターフェースの数だけ"[[device.interface]]"セクションをコピーして記載します。
 
 ```
 
@@ -78,7 +90,7 @@ vlanid  = "インタフェースに設定しているVLAN IDを記載"
 ```
 
 [device]
-devicename = "Paloalto"
+devicename = "PaloAlto"
 
 [[device.interface]]
 ifname  = "ethernet1/1"

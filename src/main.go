@@ -11,6 +11,7 @@ import (
 	"flag"
 	"time"
 	"strconv"
+	"regexp"
 )
 
 type ScenarioLine struct {
@@ -69,13 +70,17 @@ func main() {
 		os.Exit(1)
 	}
 	
-	baseLogData , err := readLine(*flgLogFile)
+	//Toml読み込み（devicename読み込み）
+	decicename , err := readToml(*flgCfg)
+
+	baseLogData , err := readLine(*flgLogFile , decicename)
 
 	if err != nil {
 		fmt.Println(err)
         os.Exit(1)
 	}
 	
+	//シナリオファイル生成
 	err = genScenario(baseLogData , *flgCfg)
 
 	if err != nil {
@@ -86,7 +91,7 @@ func main() {
 }
 
 //logファイルを読み込む
-func readLine(filename string) ([]ScenarioLine , error) {
+func readLine(filename string , devicename string) ([]ScenarioLine , error) {
 	var logdata []ScenarioLine
 
     file, err := os.Open(filename)
@@ -95,8 +100,8 @@ func readLine(filename string) ([]ScenarioLine , error) {
     }
     defer file.Close()
 
-    reader := bufio.NewReader(file)
-
+	reader := bufio.NewReader(file)
+	
 	//logdataMapのindexとして利用
 	j := 0
 	//ログを1行ごと読み込む
@@ -108,72 +113,42 @@ func readLine(filename string) ([]ScenarioLine , error) {
         if err != nil {
        		return logdata , err
         }
-		
-		// カンマでスプリット
-		slice := strings.Split(string(line), ",")
-
-		//CSVフォーマットをチェック
-		///ログのコメント除外
-		if slice[0] == "##" {
-			continue
-		//ログの項目数確認
-		}else if  len(slice) != 65 {
-			fmt.Println("Unexpected a log format.")
-			os.Exit(1)
-		//ログのヘッダーを除外
-		} else if slice[3] != "TRAFFIC" {
-			continue
-		}
-
-		//スプリットした値を入れるMAPを作成
-		logdataLineMap := make(map[string]string)
-
-  		for i, str := range slice {
-			switch(i){
-				case 3:
-					logdataLineMap["logtype"] = str
-				case 6:
-					logdataLineMap["time"] = str
-				case 7:
-					logdataLineMap["srcip"] = str
-				case 8:
-					logdataLineMap["destip"] = str
-				case 9:
-					logdataLineMap["natsrcip"] = str
-				case 10:
-					logdataLineMap["natdestip"] = str
-				case 11:
-					logdataLineMap["rulename"] = str
-				case 16:
-					logdataLineMap["srczone"] = str
-				case 17:
-					logdataLineMap["destzone"] = str
-				case 18:
-					logdataLineMap["ininterface"] = str
-				case 19:
-					logdataLineMap["outinterface"] = str
-				case 24:
-					logdataLineMap["srcport"] = str
-				case 25:
-					logdataLineMap["destport"] = str
-				case 26:
-					logdataLineMap["natsrcport"] = str
-				case 27:
-					logdataLineMap["natdestport"] = str
-				case 29:
-					logdataLineMap["protocol"] = str
-				case 30:
-					logdataLineMap["action"] = str
-				case 46:
-					//Session End Reason
-					logdataLineMap["ser"] = str					
-			}
-		}  
-
-    	if isPrefix {
+	
+		if isPrefix {
 			break
 		} 
 
+
+		logdataLineMap := make(map[string]string)
+		
+		//ログをパース
+		switch {
+			//devicenameがPaloaltoの場合の処理（大文字小文字は無視）
+			case strings.EqualFold("paloalto", devicename):
+				logdataLineMap , err = parsePaloalto(string(line))
+
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+			//devicenameがFortigateの場合の処理（大文字小文字は無視）
+			case strings.EqualFold("fortigate", devicename):
+				logdataLineMap , err = parseFortigate(string(line))
+
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+			default:
+				fmt.Println("Unsupported devicename")
+				os.Exit(1)
+		}
+
+		//空のMAPが返却された場合、for文を抜ける
+		if len(logdataLineMap) == 0 {
+			continue
+		}
+		
 		//想定しない値があった場合にdescriptionに追記する
 		logdataLineMap["description"] = " ,"
 
@@ -193,7 +168,10 @@ func readLine(filename string) ([]ScenarioLine , error) {
 			case "reset-client":
 				logdataLineMap["action"] = "drop"	
 			case "reset-server":
-				logdataLineMap["action"] = "drop"										
+				logdataLineMap["action"] = "drop"	
+			//Fortigate用
+			case "accept":
+				logdataLineMap["action"] = "pass"														
 			default:
 				logdataLineMap["description"] += " | exception(action:" + logdataLineMap["action"] + ")"
 				logdataLineMap["action"] = "undefined"
@@ -244,6 +222,12 @@ func readLine(filename string) ([]ScenarioLine , error) {
 		switch{
 			case logdataLineMap["protocol"] == "icmp" || logdataLineMap["protocol"] == "tcp" || logdataLineMap["protocol"] == "udp":
 				break
+			case logdataLineMap["protocol"] == "1":
+				logdataLineMap["protocol"] = "icmp"
+			case logdataLineMap["protocol"] == "17":
+				logdataLineMap["protocol"] = "udp"
+			case logdataLineMap["protocol"] == "6":
+				logdataLineMap["protocol"] = "tcp"
 			default:
 				logdataLineMap["description"] += " | exception(protocol:" + logdataLineMap["protocol"] + ")"
 				logdataLineMap["protocol"] = "undefined"	
@@ -285,7 +269,7 @@ func genScenario(baseLogData []ScenarioLine , tomlFile string) error {
 	defer file.Close()
 	
 	//ファイルの中身を空にする
-	err = file.Truncate(0)
+	//err = file.Truncate(0)
 
     if err != nil {
         return err
@@ -318,7 +302,9 @@ func genScenario(baseLogData []ScenarioLine , tomlFile string) error {
 		for _, tomlValue := range config.Device.Interface {
 			//fmt.Println(len(value.outinterface) , value.outinterface)
 			//fmt.Println(tomlValue.Ifname)
-			// v
+			//fmt.Println(tomlValue.Ip)
+			//fmt.Println(value.outinterface)
+			//fmt.Println(value.ininterface)
 
 			switch{
 				//宛先IPがFWのインタフェースに設定されているIPの場合は除外する
@@ -332,6 +318,7 @@ func genScenario(baseLogData []ScenarioLine , tomlFile string) error {
 					skipLog = true
 					//break
 				//out IFが空 = Dropログの場合の処理（Zoneからs-fw、d−fwのIPアドレスを割り当てる）
+				//Paloaltoの場合
 				case len(value.outinterface) <= 1:
 					if value.destzone == tomlValue.Zone {
 						newDfw  = append(newDfw, tomlValue.Ip)
@@ -407,4 +394,173 @@ func genScenario(baseLogData []ScenarioLine , tomlFile string) error {
 	fmt.Println("- " + resultFilename)
 
 	return nil
+}
+
+func readToml(tomlFile string)(string , error) {
+
+	var config TomlConfig
+	_, err := toml.DecodeFile(tomlFile, &config)
+  	if err != nil {
+        return  "toml read error" , err
+	}
+
+	return config.Device.Device , nil
+}
+
+func parsePaloalto(line string)(map[string]string,error) {
+	
+	//スプリットした値を入れるMAPを作成
+	logdataLineMap := make(map[string]string)
+
+	// カンマでスプリット
+	slice := strings.Split(string(line), ",")
+
+	//CSVフォーマットをチェック
+	///ログのコメント除外
+	if slice[0] == "##" {
+		return logdataLineMap , nil
+	//ログの項目数確認
+	}else if  len(slice) != 65 {
+		fmt.Println("Unexpected a log format.")
+		return logdataLineMap , nil
+	//ログのヘッダーを除外
+	} else if slice[3] != "TRAFFIC" {
+		return logdataLineMap , nil
+	}
+
+	for i, str := range slice {
+		switch(i){
+			case 3:
+				logdataLineMap["logtype"] = str
+			case 6:
+				logdataLineMap["time"] = str
+			case 7:
+				logdataLineMap["srcip"] = str
+			case 8:
+				logdataLineMap["destip"] = str
+			case 9:
+				logdataLineMap["natsrcip"] = str
+			case 10:
+				logdataLineMap["natdestip"] = str
+			case 11:
+				logdataLineMap["rulename"] = str
+			case 16:
+				logdataLineMap["srczone"] = str
+			case 17:
+				logdataLineMap["destzone"] = str
+			case 18:
+				logdataLineMap["ininterface"] = str
+			case 19:
+				logdataLineMap["outinterface"] = str
+			case 24:
+				logdataLineMap["srcport"] = str
+			case 25:
+				logdataLineMap["destport"] = str
+			case 26:
+				logdataLineMap["natsrcport"] = str
+			case 27:
+				logdataLineMap["natdestport"] = str
+			case 29:
+				logdataLineMap["protocol"] = str
+			case 30:
+				logdataLineMap["action"] = str
+			case 46:
+				//Session End Reason
+				logdataLineMap["ser"] = str
+		}
+	} 
+	
+	return logdataLineMap , nil
+}
+
+func parseFortigate(line string)(map[string]string,error) {
+	
+	//スプリットした値を入れるMAPを作成
+	logdataLineMap := make(map[string]string)
+
+	//timeとdate格納用
+	logdataLineMap["time"] = ""
+
+	//ダブルクォートを削除する
+	line = strings.Replace(line, "\"", "", -1)
+
+	// スペースでスプリット
+	slice := strings.Split(string(line), " ")
+
+	//正規表現オブジェクト作成
+	rep := regexp.MustCompile(`(\s*=\s*)`)
+
+	for _, str := range slice {
+
+		//正規表現で「=」前後を抽出
+		result := rep.Split(str, -1)
+
+		//Logフォーマットをチェック
+		///ログのコメント除外
+		if result[0] == "##" {
+			logdataLineMap := make(map[string]string)
+			return logdataLineMap , nil
+		}
+
+
+		switch(result[0]){
+			case "type":
+				if  result[0] == "traffic" {			
+					logdataLineMap["logtype"] = result[1]
+				}
+			case "time":
+				logdataLineMap["time"] += result[1]
+			case "srcip":
+				logdataLineMap["srcip"] = result[1]
+			case "dstip":
+				logdataLineMap["destip"] = result[1]
+			case "transip":
+				logdataLineMap["natsrcip"] = result[1]
+			case "tranip":
+				logdataLineMap["natdestip"] = result[1]
+			case "policyid":
+				logdataLineMap["rulename"] = result[1]
+			//case 16:
+			//	logdataLineMap["srczone"] = result[1]
+			//case 17:
+			//	logdataLineMap["destzone"] = result[1]
+			case "srcintf":
+				logdataLineMap["ininterface"] = result[1]
+			case "dstintf":
+				logdataLineMap["outinterface"] = result[1]
+			case "srcport":
+				logdataLineMap["srcport"] = result[1]
+			case "dstport":
+				logdataLineMap["destport"] = result[1]
+			case "transport":
+				logdataLineMap["natsrcport"] = result[1]
+			case "tranport":
+				logdataLineMap["natdestport"] = result[1]
+			case "proto":
+				logdataLineMap["protocol"] = result[1]
+			case "action":
+				logdataLineMap["action"] = result[1]
+			//case 46:
+				//Session End Reason
+			//	logdataLineMap["ser"] = result[1]
+			case "date":
+				logdataLineMap["time"] += result[1]			
+		}
+
+	//	result[i] := rep.Split(str, 1)
+		//ダブルクウォートを削除
+	//	strings.TrimSpace(result[i] , "\"")
+
+	// /fmt.Println(logdataLineMap)
+
+	}
+	
+	//NAT変換後のポートがNAT前ポートと同じ場合、値が０になるためNAT前ポートの値をコピーする
+	if logdataLineMap["natdestport"] == "0" {
+		logdataLineMap["natdestport"] = logdataLineMap["destport"] 
+	}
+
+	
+	
+	return logdataLineMap , nil
 }

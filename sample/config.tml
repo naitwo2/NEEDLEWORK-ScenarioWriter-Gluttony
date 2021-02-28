@@ -1,6 +1,6 @@
 
 [device]
-devicename = "Paloalto"
+devicename = "PaloAlto"
 
 [[device.interface]]
 ifname  = "ethernet1/1"
