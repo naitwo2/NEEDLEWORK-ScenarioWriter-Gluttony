@@ -18,6 +18,12 @@
 [https://www.ap-com.co.jp/ja/needlework/](https://www.ap-com.co.jp/ja/needlework/)
 
 
+## ツールイメージ
+![イメージ](img/NEEDLEWORK-ScenarioWriter_image.png) <br>
+ログファイルと構成ファイル（※）を読み込ませ、NEEDLEWORKのテストシナリオを生成します。 <br>
+※ネットワーク機器のゾーン名、IPアドレス等を定義したファイルです
+
+## 対応しているログ
 現在対応しているネットワーク機器・ログは以下の通りです。
 
 - Palo Alto Networks 次世代ファイアウォール
@@ -42,27 +48,28 @@ OS : Windows 10
 
 ## 事前準備
 
-1．下記URLよりzipファイルをダウンロードします。<br>
+1．[こちらから](http://s.naitwo.me/swg)、zipファイルをダウンロードします。<br>
 　※最新バージョンをご利用ください<br>
-　[https://github.com/naitwo2/NEEDLEWORK-ScenarioWriter-Gluttony/releases](https://github.com/naitwo2/NEEDLEWORK-ScenarioWriter-Gluttony/releases)
+　※`swg_v*.*.zip` という名称です<br>
+
 
 2．zipファイルを任意のディレクトリに解凍します。<br>
 
 　以下のファイルが含まれています。<br>
-  - swg.exe                 ：ツール本体<br>
-  - readme.txt          ：はじめにお読みください<br>
-  - LICENSE             :ライセンス<br>
-  - sample/config.tml          ：サンプルコンフィグ<br>
-  - sample/sample_**_traffic.log  :サンプルログ
+  - swg.exe                     ：ツール本体<br>
+  - readme.txt                  ：はじめにお読みください<br>
+  - LICENSE                     ：ライセンス<br>
+  - sample/config.tml           ：サンプル構成ファイル<br>
+  - sample/sample_**_traffic.log：サンプルログ
 
-3．コンフィグファイル（config.tml）を編集します。
+3．構成ファイル（config.tml）を編集します。
 
-　コンフィグファイルはtomlというフォーマットで定義します。<br>
+　構成ファイルはtomlというフォーマットで定義します。<br>
 
-　以下の内容で設定します。<br>
-　記載した値を参照してログからシナリオを生成しているので正確に記載をお願いします。<br>
-　※devicenameは大文字小文字を区別しません<br>
-　※その他の項目は大文字小文字を区別するため正確に記載をお願いします<br>
+　以下の内容で設定します。<br><br>
+  記載した値を参照してログからシナリオを生成しているので正確に記載をお願いします。<br>
+  ※devicenameは大文字小文字を区別しません<br>
+  ※その他の項目は大文字小文字を区別するため正確に記載をお願いします<br>
 
 ```
 [device]
@@ -80,13 +87,13 @@ vlanid  = "インターフェースに設定しているVLAN IDを記載"
 
 ```
 
-### サンプルコンフィグ
+### 構成ファイルの記載方法（サンプル）
 
 ### 構成 
 
 ![構成](img/NEEDLEWORK-ScenarioWriter.png) 
 
-### コンフィグ
+### 構成ファイル
 ```
 
 [device]
@@ -128,7 +135,7 @@ vlanid  = "30"
 swg -f <ログファイルパス> [オプション]
 
 # オプション
--c              ：コンフィグファイルパスを指定（デフォルト：config.tml）
+-c              ：構成ファイルパスを指定（デフォルト：config.tml）
 
 # コマンド例
 swg -f sample_traffic.log -c config02.tml
